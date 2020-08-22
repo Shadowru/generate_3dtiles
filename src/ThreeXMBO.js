@@ -1,6 +1,6 @@
 import Logger from "js-logger";
 
-class ThreeXMBO{
+class ThreeXMBO {
 
     constructor(threeXMBOData) {
 
@@ -29,6 +29,10 @@ class ThreeXMBO{
 
     get threeXMBOHeaderNodes() {
         return this._threeXMBOHeaderNodes;
+    }
+
+    getResources() {
+        return this._threeXMBOHeaderResources;
     }
 
     _checkHeader(layer_data) {

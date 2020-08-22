@@ -9,6 +9,8 @@ import SRSProcessor from "./SRSProcessor";
 
 import {Cartesian3, HeadingPitchRoll, Matrix4, Transforms} from "cesium";
 
+import CTM2GLBConverter from './CTM2GLBConverter'
+
 export default class ThreeMXProcessor {
 
     constructor(options) {
@@ -84,9 +86,8 @@ export default class ThreeMXProcessor {
     }
 
     _parseThreeXMBO(layer, rootFile) {
-        const threeXMBO = new ThreeXMBO(rootFile);
-        Logger.debug(JSON.stringify(threeXMBO));
-        this._generateGeometryProperties(layer, threeXMBO.getNodes());
+        layer._threeXMBO = new ThreeXMBO(rootFile);
+        this._generateGeometryProperties(layer, layer._threeXMBO.getNodes());
     }
 
     _generateGeometryProperties(layer, node_list) {
@@ -205,7 +206,26 @@ export default class ThreeMXProcessor {
     }
 
     process3D(layer) {
-        return new Buffer.alloc(0);
-    }
+        const xmbo = layer._threeXMBO;
 
+        const nodeResources = xmbo.getResources();
+
+        for (const nodeResource of nodeResources) {
+
+            if (nodeResource === undefined) {
+                Logger.error('Resource not found!');
+                continue;
+            }
+
+            if (nodeResource.type === 'geometryBuffer') {
+                if (nodeResource.format === 'ctm') {
+                    const byteResource = xmbo.getThreeXMBResource(nodeResource.id);
+
+
+
+                }
+            }
+        }
+        return Buffer.alloc(0);
+    }
 }

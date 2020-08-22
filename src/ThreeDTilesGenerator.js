@@ -1,6 +1,7 @@
 import ThreeMXProcessor from './ThreeMXProcessor'
 import SRSProcessor from "./SRSProcessor";
 import * as fs from "fs";
+
 const fsExtra = require('fs-extra');
 
 export default class ThreeDTilesGenerator {
@@ -14,7 +15,7 @@ export default class ThreeDTilesGenerator {
 
     proceed(tileDir) {
 
-        this._ensureCleanup(tileDir);
+        ThreeDTilesGenerator._ensureCleanup(tileDir);
 
         const threeMXProcessor = new ThreeMXProcessor(this._options);
 
@@ -34,6 +35,10 @@ export default class ThreeDTilesGenerator {
         tileset.root.transform = layer.transformMatrix;
         tileset.root.boundingVolume = {
             "box": layer.localBoundingBox
+        }
+
+        tileset.root.extras = {
+            name: layer.name
         }
 
         const contentURI = this._save3D(tileDir, threeMXProcessor, layer);
