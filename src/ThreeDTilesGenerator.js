@@ -1,8 +1,7 @@
 import ThreeMXProcessor from './ThreeMXProcessor'
 import SRSProcessor from "./SRSProcessor";
+import FileUtils from "./FileUtils"
 import * as fs from "fs";
-
-const fsExtra = require('fs-extra');
 
 export default class ThreeDTilesGenerator {
 
@@ -15,7 +14,7 @@ export default class ThreeDTilesGenerator {
 
     proceed(tileDir) {
 
-        ThreeDTilesGenerator._ensureCleanup(tileDir);
+        FileUtils.ensureCleanup(tileDir);
 
         const threeMXProcessor = new ThreeMXProcessor(this._options);
 
@@ -59,21 +58,8 @@ export default class ThreeDTilesGenerator {
 
     _save3D(tileDir, threeMXProcessor, layer) {
         const data = threeMXProcessor.process3D(layer);
-        const tilePath = this._getRandomName() + '.b3dm';
+        const tilePath = FileUtils.getRandomName() + '.b3dm';
         fs.writeFileSync(tileDir + tilePath, data);
         return tilePath;
-    }
-
-    _getRandomName() {
-        return Math.random().toString(36).substring(7);
-    }
-
-    static _ensureCleanup(path) {
-        ThreeDTilesGenerator.ensureExists(path);
-        fsExtra.emptyDirSync(path);
-    }
-
-    static ensureExists(path) {
-        fs.mkdirSync(path, {recursive: true});//, mask, function(err) {
     }
 }

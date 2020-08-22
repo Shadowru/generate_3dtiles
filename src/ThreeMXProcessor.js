@@ -10,6 +10,7 @@ import SRSProcessor from "./SRSProcessor";
 import {Cartesian3, HeadingPitchRoll, Matrix4, Transforms} from "cesium";
 
 import CTM2GLBConverter from './CTM2GLBConverter'
+import FileUtils from "./FileUtils";
 
 export default class ThreeMXProcessor {
 
@@ -206,6 +207,11 @@ export default class ThreeMXProcessor {
     }
 
     process3D(layer) {
+
+        const ctmCatalog = './tmp/ctm/';
+
+        FileUtils.ensureCleanup(ctmCatalog);
+
         const xmbo = layer._threeXMBO;
 
         const nodeResources = xmbo.getResources();
@@ -221,8 +227,9 @@ export default class ThreeMXProcessor {
                 if (nodeResource.format === 'ctm') {
                     const byteResource = xmbo.getThreeXMBResource(nodeResource.id);
 
+                    const converter = new CTM2GLBConverter(ctmCatalog, byteResource);
 
-
+                    const glbByteBuffer = converter.convert();
                 }
             }
         }
