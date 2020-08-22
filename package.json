@@ -1,0 +1,28 @@
+{
+  "name": "generate_3dtiles",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "build": "babel  --watch src -d dist --source-maps",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "@turf/turf": "^5.1.6",
+    "cesium": "^1.72.0",
+    "command-line-args": "^5.1.1",
+    "fs-extra": "^9.0.1",
+    "js-logger": "^1.6.0",
+    "proj4": "^2.6.2"
+  },
+  "devDependencies": {
+    "@babel/cli": "^7.10.5",
+    "@babel/core": "^7.11.1",
+    "@babel/preset-env": "^7.11.0",
+    "webpack": "^4.43.0",
+    "webpack-cli": "^3.3.12"
+  }
+}

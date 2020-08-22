@@ -1,0 +1,6 @@
+# Project exclude paths
+/data/
+/dist/
+/node_modules/
+/samples/
+/tmp/
