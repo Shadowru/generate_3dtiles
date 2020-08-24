@@ -8,7 +8,7 @@ const execSync = require('child_process').execSync;
 export default class CTM {
 
 
-    constructor(ctmCatalog, data) {
+    constructor(ctmCatalog, ctmdata) {
         this._ctmFileCatalog = ctmCatalog;
         //TODO: FIX
         this._appsCatalog = __dirname + '/../3dpartyapp/ctm/'
@@ -21,7 +21,7 @@ export default class CTM {
             this._objectFileName,
             this._textureFileName,
             this._mtlFileName,
-            data.data
+            ctmdata.data
         );
     }
 
@@ -43,5 +43,9 @@ export default class CTM {
             ctmFileCommand,
             {stdio: 'inherit'}
         );
+    }
+
+    getObjectFileName() {
+        return this._objectFileName;
     }
 }

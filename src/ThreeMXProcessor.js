@@ -9,9 +9,6 @@ import SRSProcessor from "./SRSProcessor";
 
 import {Cartesian3, HeadingPitchRoll, Matrix4, Transforms} from "cesium";
 
-import CTM2GLBConverter from './CTM2GLBConverter'
-import FileUtils from "./FileUtils";
-
 export default class ThreeMXProcessor {
 
     constructor(options) {
@@ -24,8 +21,13 @@ export default class ThreeMXProcessor {
 
         this._fileLoader = new CachedFileLoader(this._options);
 
-        this._loadLayers(this._layers, this._fileLoader, this._options.depth);
+        //this._loadLayers(this._layers, this._fileLoader, this._options.depth);
 
+    }
+
+    parse3XMBOFile(xmboFilePath){
+        const xmboFile = this._fileLoader.getFile(xmboFilePath);
+        return new ThreeXMBO(xmboFile);
     }
 
     _parseHeader(threeMXObject) {
@@ -47,7 +49,7 @@ export default class ThreeMXProcessor {
         const layers = [];
         for (const threeMxLayer of threeMxLayers) {
             const layer = {
-                "name": threeMxLayer.name,
+                "name": "tileset",
                 "description": threeMxLayer.description,
                 "root": threeMxLayer.root,
                 "coordinateConverter": SRSProcessor.proceedSRS(threeMxLayer.SRS, threeMxLayer.SRSOrigin),
@@ -76,19 +78,16 @@ export default class ThreeMXProcessor {
 
     _loadLayers(layers, fileLoader, depth) {
         for (const layer of layers) {
-            const rootFile = fileLoader.getFile(layer.root);
-            this._parseThreeXMBO(layer, rootFile);
+            //const rootFile = fileLoader.getFile(layer.root);
+            //this._parseThreeXMBO(layer, rootFile);
             //this._loadChidrens(rootFile, fileLoader, depth);
         }
     }
 
-    _loadChidrens(threeXMBOFile, fileLoader, depth) {
-        this._parseThreeXMBO(threeXMBOFile);
-    }
-
     _parseThreeXMBO(layer, rootFile) {
         layer._threeXMBO = new ThreeXMBO(rootFile);
-        this._generateGeometryProperties(layer, layer._threeXMBO.getNodes());
+        const node_list = layer._threeXMBO.getNodes();
+        this._generateGeometryProperties(layer, node_list);
     }
 
     _generateGeometryProperties(layer, node_list) {
@@ -96,16 +95,40 @@ export default class ThreeMXProcessor {
         let bounding_box_min = undefined;
         let bounding_box_max = undefined;
 
+        const children = [];
+
         for (const node of node_list) {
+
+            const coords_min_wgs84 = layer.wgs84Converter.forward(node.bbMin);
+            const coords_max_wgs84 = layer.wgs84Converter.forward(node.bbMax);
+
+            let {length, height} = this._calcWGS84toMeters(
+                coords_min_wgs84, coords_max_wgs84
+            );
+
+            children.push(
+                {
+                    "length": length,
+                    "height": height,
+                    "z_val": delta([node.bbMax[2], node.bbMin[2]]),
+                    "wgs84_center": [
+                        average([coords_min_wgs84[0], coords_max_wgs84[0]]),
+                        average([coords_min_wgs84[1], coords_max_wgs84[1]]),
+                        average([coords_min_wgs84[2], coords_max_wgs84[2]]),
+                    ],
+                    "name": node.id,
+                    "region": this.generateRegion(coords_min_wgs84, coords_max_wgs84),
+                    "resources": node.resources,
+                }
+            )
+
             bounding_box_min = this._proceedCoords(bounding_box_min, node.bbMin, Math.min);
             bounding_box_max = this._proceedCoords(bounding_box_max, node.bbMax, Math.max);
+
         }
 
         Logger.debug(JSON.stringify(bounding_box_min));
         Logger.debug(JSON.stringify(bounding_box_max));
-
-        //const coords_min = layer.coordinateConverter.forward(bounding_box_min);
-        //const coords_max = layer.coordinateConverter.forward(bounding_box_max);
 
         const coords_min_wgs84 = layer.wgs84Converter.forward(bounding_box_min);
         const coords_max_wgs84 = layer.wgs84Converter.forward(bounding_box_max);
@@ -146,22 +169,26 @@ export default class ThreeMXProcessor {
             coords_min_wgs84, coords_max_wgs84
         );
 
-        const boundingBox = [
-            0,
-            0,
-            0,
-            length / 2,
-            0,
-            0,
-            0,
-            height / 2,
-            0,
-            0,
-            0,
-            delta([coords_max[2], coords_min[2]]),
-        ];
+        layer.region = this.generateRegion(coords_min_wgs84, coords_max_wgs84);
 
-        layer.localBoundingBox = boundingBox;
+        layer.localBoundingBox = this._getBoundingBox(length, height, delta([coords_max[2], coords_min[2]]));
+
+        layer.children = [];
+
+        for (const child of children) {
+            const childrenObject = {
+                "transformMatrix": this._wgs84Transform(child.wgs84_center),
+                "localBoundingBox": this._getBoundingBox(child.length, child.height, child.z_val)
+            };
+
+            childrenObject.localBoundingBox[0] = child.wgs84_center[0];
+            childrenObject.localBoundingBox[1] = child.wgs84_center[1];
+            childrenObject.localBoundingBox[2] = child.z_val;
+            childrenObject.region = child.region;
+            childrenObject.resources = child.resources;
+
+            layer.children.push(childrenObject);
+        }
 
         Logger.debug('Layer : ' + JSON.stringify(layer, null, 4));
     }
@@ -206,33 +233,30 @@ export default class ThreeMXProcessor {
         }
     }
 
-    process3D(layer) {
+    _getBoundingBox(length, height, z_val) {
+        return [
+            0,
+            0,
+            0,
+            length / 2,
+            0,
+            0,
+            0,
+            height / 2,
+            0,
+            0,
+            0,
+            z_val,
+        ];
+    }
 
-        const ctmCatalog = './tmp/ctm/';
-
-        FileUtils.ensureCleanup(ctmCatalog);
-
-        const xmbo = layer._threeXMBO;
-
-        const nodeResources = xmbo.getResources();
-
-        for (const nodeResource of nodeResources) {
-
-            if (nodeResource === undefined) {
-                Logger.error('Resource not found!');
-                continue;
-            }
-
-            if (nodeResource.type === 'geometryBuffer') {
-                if (nodeResource.format === 'ctm') {
-                    const byteResource = xmbo.getThreeXMBResource(nodeResource.id);
-
-                    const converter = new CTM2GLBConverter(ctmCatalog, byteResource);
-
-                    const glbByteBuffer = converter.convert();
-                }
-            }
-        }
-        return Buffer.alloc(0);
+    generateRegion(coords_min_wgs84, coords_max_wgs84) {
+        return [
+            turf.degreesToRadians(coords_min_wgs84[0]),
+            turf.degreesToRadians(coords_min_wgs84[1]),
+            turf.degreesToRadians(coords_max_wgs84[0]),
+            turf.degreesToRadians(coords_max_wgs84[1]),
+            coords_min_wgs84[2], coords_max_wgs84[2]
+        ]
     }
 }

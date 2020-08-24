@@ -2,7 +2,7 @@ import ThreeDTilesGenerator from './ThreeDTilesGenerator'
 import Logger from "js-logger";
 
 Logger.useDefaults({
-    defaultLevel: Logger.INFO
+    defaultLevel: Logger.DEBUG
 });
 
 
@@ -13,7 +13,7 @@ const optionDefinitionsPlant = [
 
 const optionHelsinkiCity = [
     {name: 'depth', alias: 'd', type: Number, defaultValue: 6},
-    {name: 'mxfile', type: String, defaultValue: './data/Helsinki/Helsinki3D-MESH_CityCenter.3mx'}
+    {name: 'mxfile', type: String, defaultValue: './data/Helsinki/Helsinki3D-MESH_CityCenter-FixedSRS.3mx'}
 ];
 
 const optionDefinitionsArma = [
