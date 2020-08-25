@@ -1,0 +1,97 @@
+{
+  "current": 1,
+  "rowCount": 10,
+  "rows": [
+    {
+      "rownumber": "1",
+      "address": "ул. Герцена, д. 104, к. А, Майкоп",
+      "square": "397.20",
+      "year": "1968",
+      "floors": "2",
+      "url": "/adygeya/maykop/818757",
+      "managestartdate": "Не заполнено"
+    },
+    {
+      "rownumber": "2",
+      "address": "ул. Депутатская, д. 6, Майкоп",
+      "square": "6615.00",
+      "year": "1969",
+      "floors": "5",
+      "url": "/adygeya/maykop/669058",
+      "managestartdate": "01.05.2015"
+    },
+    {
+      "rownumber": "3",
+      "address": "ул. Димитрова, д. 9, Майкоп",
+      "square": "2914.40",
+      "year": "1969",
+      "floors": "5",
+      "url": "/adygeya/maykop/669066",
+      "managestartdate": "01.05.2015"
+    },
+    {
+      "rownumber": "4",
+      "address": "ул. Димитрова, д. 11, к. 4, Майкоп",
+      "square": "4483.70",
+      "year": "1969",
+      "floors": "5",
+      "url": "/adygeya/maykop/669068",
+      "managestartdate": "01.05.2015"
+    },
+    {
+      "rownumber": "5",
+      "address": "ул. Чкалова, д. 86, к. 3, Майкоп",
+      "square": "6581.30",
+      "year": "1971",
+      "floors": "5",
+      "url": "/adygeya/maykop/504490",
+      "managestartdate": "30.11.2010"
+    },
+    {
+      "rownumber": "6",
+      "address": "ул. Герцена, д. 102, Майкоп",
+      "square": "390.30",
+      "year": "1970",
+      "floors": "2",
+      "url": "/adygeya/maykop/818758",
+      "managestartdate": "Не заполнено"
+    },
+    {
+      "rownumber": "7",
+      "address": "ул. Чкалова, д. 79, Майкоп",
+      "square": "2904.40",
+      "year": "1974",
+      "floors": "5",
+      "url": "/adygeya/maykop/669082",
+      "managestartdate": "01.05.2015"
+    },
+    {
+      "rownumber": "8",
+      "address": "ул. Димитрова, д. 10, Майкоп",
+      "square": "5678.30",
+      "year": "1985",
+      "floors": "9",
+      "url": "/adygeya/maykop/526011",
+      "managestartdate": "01.05.2015"
+    },
+    {
+      "rownumber": "9",
+      "address": "ул. Димитрова, д. 20, Майкоп",
+      "square": "5693.10",
+      "year": "1987",
+      "floors": "9",
+      "url": "/adygeya/maykop/669070",
+      "managestartdate": "01.05.2015"
+    },
+    {
+      "rownumber": "10",
+      "address": "ул. Димитрова, д. 19, Майкоп",
+      "square": "6631.00",
+      "year": "1970",
+      "floors": "5",
+      "url": "/adygeya/maykop/736736",
+      "managestartdate": "01.06.2014"
+    }
+  ],
+  "total": 1580
+}

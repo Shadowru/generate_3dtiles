@@ -4,7 +4,11 @@ class ThreeXMBO {
 
     constructor(threeXMBOData) {
 
-        this._threeXMBOData = threeXMBOData;
+        this._threeXMBOFile = threeXMBOData.xmboFileName;
+
+        this._threeXMBODir = threeXMBOData.xmboFileDirectory;
+
+        this._threeXMBOData = threeXMBOData.file;
 
         this._threeXMBOHeader = this._parseThreeXMBOHeader(this._threeXMBOData);
 
@@ -13,6 +17,14 @@ class ThreeXMBO {
         this._processedResources = this._loadXMBOResources(this._threeXMBOHeaderResources, this._threeXMBOData);
 
         this._threeXMBOHeaderNodes = this._threeXMBOHeader.nodes;
+    }
+
+    getFileDirectory() {
+        return this._threeXMBODir;
+    };
+
+    getFileName() {
+        return this._threeXMBOFile;
     }
 
     getThreeXMBResource(nodeResourceID) {

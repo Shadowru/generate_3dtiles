@@ -3,12 +3,12 @@ import * as fs from "fs";
 var path = require("path");
 
 import Logger from "js-logger";
+import FileUtils from "./FileUtils";
 
 export default class CachedFileLoader {
 
     constructor(_options) {
         this._options = _options;
-        this._supportedURL = ['http://', 'https://', 'ftp://'];
         this._rootDir = this._getRootDir(this._options.threeMXFile);
     }
 
@@ -21,14 +21,8 @@ export default class CachedFileLoader {
     }
 
     getFile(fileURI) {
-        let cachedFilePath = this._rootDir;
-        if (this._isURL(fileURI)) {
-            const fileURL = new URL(fileURI);
-            cachedFilePath = cachedFilePath + fileURL.pathname;
-        } else {
-            cachedFilePath = cachedFilePath + '\\' + fileURI;
-        }
-
+        const relativePath = FileUtils.getRelativePath(fileURI);
+        let cachedFilePath = this._rootDir + relativePath;
         Logger.debug('Cached file path : ' + cachedFilePath)
 
         if (!fs.existsSync(cachedFilePath)) {
@@ -36,15 +30,11 @@ export default class CachedFileLoader {
             return undefined;
         }
 
-        return fs.readFileSync(cachedFilePath);
+        return {
+            xmboFileName: path.basename(relativePath),
+            xmboFileDirectory: path.dirname(relativePath),
+            file: fs.readFileSync(cachedFilePath)
+        };
     }
 
-    _isURL(fileURI) {
-        for (const url_prefix of this._supportedURL) {
-            if (fileURI.startsWith(url_prefix)) {
-                return true;
-            }
-        }
-        return false;
-    }
 }

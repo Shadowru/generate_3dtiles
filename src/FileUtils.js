@@ -14,4 +14,22 @@ export default class FileUtils {
     static ensureExists(path) {
         fs.mkdirSync(path, {recursive: true});//, mask, function(err) {
     }
+
+    static getRelativePath(fileURI) {
+        if (FileUtils._isURL(fileURI)) {
+            const fileURL = new URL(fileURI);
+            return fileURL.pathname;
+        }
+        return '\\' + fileURI;
+    }
+
+    static _isURL(fileURI) {
+        const _supportedURL = ['http://', 'https://', 'ftp://'];
+        for (const url_prefix of _supportedURL) {
+            if (fileURI.startsWith(url_prefix)) {
+                return true;
+            }
+        }
+        return false;
+    }
 }

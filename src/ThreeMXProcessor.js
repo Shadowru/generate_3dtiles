@@ -27,6 +27,9 @@ export default class ThreeMXProcessor {
 
     parse3XMBOFile(xmboFilePath){
         const xmboFile = this._fileLoader.getFile(xmboFilePath);
+        if(xmboFile === undefined){
+            return undefined;
+        }
         return new ThreeXMBO(xmboFile);
     }
 

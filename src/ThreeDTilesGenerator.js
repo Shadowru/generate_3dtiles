@@ -1,12 +1,16 @@
 import * as fs from "fs";
 import path from "path";
 
+import Logger from "js-logger";
+
+const WorkerPool = require('./WorkerPool');
+const os = require('os');
+
 import ThreeMXProcessor from './ThreeMXProcessor'
 import SRSProcessor from "./SRSProcessor";
 import FileUtils from "./FileUtils"
-import CTM2GLBConverter from "./CTM2GLBConverter";
 import TilesetGenerator from "./TilesetGenerator";
-import Logger from "js-logger";
+//import DBStorage from "./DBStorage";
 
 export default class ThreeDTilesGenerator {
 
@@ -17,6 +21,9 @@ export default class ThreeDTilesGenerator {
         this._tilesetCatalog = './tmp/tiles/';
         SRSProcessor.init();
         this._threeMXProcessor = new ThreeMXProcessor(this._options);
+
+        this._workerPool = new WorkerPool(os.cpus().length);
+        //this._dbStorage = new DBStorage();
     }
 
     proceed(tileDir) {
@@ -25,11 +32,13 @@ export default class ThreeDTilesGenerator {
 
         FileUtils.ensureCleanup(this._ctmCatalog);
 
-
         const layer = this._threeMXProcessor.getLayer(0);
 
-        this._generateTileset(tileDir, layer, this._threeMXProcessor)
+        this._generateTileset(tileDir, layer, this._threeMXProcessor);
 
+        this._workerPool.close();
+
+        //this._dbStorage.close();
     }
 
     _generateTileset(tileDir, layer) {
@@ -37,11 +46,26 @@ export default class ThreeDTilesGenerator {
         const xmboRootFile = layer.root;
         const xmboFile = this._threeMXProcessor.parse3XMBOFile(xmboRootFile);
         const startDepth = 0;
-        this._process3XmboFile(xmboFile, new TilesetGenerator(layer.wgs84Converter), startDepth);
+        this._process3XmboFile(xmboFile, new TilesetGenerator(layer.wgs84Converter, this._options.geometricError), startDepth);
     }
 
-    _process3XmboFile(xmboFile, tilesetGenerator, depth, tilesetName = 'tileset.json') {
+    _generateHash(str) {
+
+        //return FileUtils.getRandomName();
+
+        var hash = 0, i, chr;
+        for (i = 0; i < str.length; i++) {
+            chr = str.charCodeAt(i);
+            hash = ((hash << 5) - hash) + chr;
+            hash |= 0; // Convert to 32bit integer
+        }
+        return Number(hash).toString(16);
+    }
+
+    _process3XmboFile(xmboFile, tilesetGenerator, depth, nodeId = 'Root', screenDiameter = 1000, tilesetName = 'tileset.json', rootResources = undefined) {
+
         Logger.info('xmboFile : ' + xmboFile + ' Depth :' + depth);
+
         if (depth > this._options.depth) {
             return;
         }
@@ -53,136 +77,173 @@ export default class ThreeDTilesGenerator {
                 "version": "1.0",
                 "gltfUpAxis": "Z"
             },
-            "geometricError": this._calcGeometricError(depth),
+            "geometricError": this._calcGeometricError(screenDiameter),
             "root": {
-                "geometricError": this._calcGeometricError(depth),
+                "geometricError": this._calcGeometricError(screenDiameter),
                 "refine": "REPLACE"
             }
         };
 
-        //tileset.root.transform = tilesetGenerator.getTransform(node_list);
-
-        tileset.root.boundingVolume = tilesetGenerator.getRegion(node_list);
-
-        for (const node of node_list) {
-
-            if (node.children !== undefined) {
-                const nodeXMBOFilePath = xmboFile.getFileDirectory() + '/' + node.children[0];
-
-                //TODO : multiplies ?
-                const nodeXMBOFile = this._threeMXProcessor.parse3XMBOFile(nodeXMBOFilePath);
-
-                if (nodeXMBOFile === undefined) {
-                    Logger.error('Node ' + node.id + ' children file ' + nodeXMBOFilePath + ' not found.');
-                } else {
-                    const childtilesetName = FileUtils.getRandomName() + '.json';
-                    this._process3XmboFile(
-                        nodeXMBOFile,
-                        tilesetGenerator,
-                        depth + 1,
-                        childtilesetName
-                    );
-                }
-            }
-        }
-
-        fs.writeFileSync(tilesetName, JSON.stringify(tileset, null, 4));
-    }
-
-
-    _generateTileset2(tileDir, layer, tilesetName = undefined) {
-        this._generateTilesetRecursive(tileDir, layer, 0, tilesetName);
-    }
-
-    _generateTilesetRecursive2(tileDir, layer, depth, tilesetName = undefined) {
-
-        const tileset = {
-            "asset": {
-                "version": "1.0",
-                "gltfUpAxis": "Z"
-            },
-            "geometricError": this._calcGeometricError(depth),
-            "root": {
-                "geometricError": this._calcGeometricError(depth),
-                "refine": "REPLACE"
-            }
-        }
-
-        tileset.root.transform = layer.transformMatrix;
-        tileset.root.boundingVolume = {
-            //"box": layer.localBoundingBox
-            "region": layer.region
-        }
-
         tileset.root.extras = {
-            name: layer.name
+            name: nodeId
+        };
+
+        //TODO: Fix
+        if (depth === 0) {
+            tileset.root.transform = tilesetGenerator.getTransform(node_list);
         }
 
-        tileset.root.children = [];
+        tileset.root.boundingVolume = {
+            "region": tilesetGenerator.getRegion(node_list)
+        }
 
-        for (const child of layer.children) {
-            const childrenObject = {
-                "geometricError": this._calcGeometricError(depth + 1),
-                "boundingVolume": {
-                    "region": child.region
-                }
-            };
-            if (child.resources !== undefined) {
-                if (child.resources.length > 0) {
+        if (rootResources !== undefined) {
+            if (rootResources.length === 1) {
 
-                    const conentUri = this._save3D(
-                        tileDir,
-                        layer,
-                        child.resources
-                    );
+                const contentUri = this._save3D(
+                    this._tilesetCatalog + '../b3dm/',
+                    this._generateHash(nodeId) + '.b3dm',
+                    rootResources[0]
+                );
 
-                    if (conentUri !== undefined) {
-                        childrenObject.content = {
-                            uri: conentUri
-                        }
+                if (contentUri !== undefined) {
+                    tileset.root.content = {
+                        uri: '../b3dm/' + contentUri
                     }
                 }
             }
-            tileset.root.children.push(childrenObject)
         }
 
-        if (tilesetName === undefined) {
-            tilesetName = layer.name + '.json';
+        if (depth + 1 <= this._options.depth) {
+
+            tileset.root.children = [];
+
+            for (const node of node_list) {
+
+                if (node.children !== undefined) {
+
+                    if (node.children[0] !== undefined) {
+
+                        let screenDiameter = node.maxScreenDiameter;
+
+                        if (screenDiameter === undefined) {
+                            return 1000;
+                        }
+
+                        const childrenObject = {
+                            "geometricError": this._calcGeometricError(screenDiameter),
+                            "boundingVolume": {
+                                "region": tilesetGenerator.getRegion([node])
+                            }
+                        };
+
+
+                        const nodeXMBOFilePath = xmboFile.getFileDirectory() + '/' + node.children[0];
+
+                        //TODO : multiplies ?
+                        const nodeXMBOFile = this._threeMXProcessor.parse3XMBOFile(nodeXMBOFilePath);
+
+                        if (nodeXMBOFile === undefined) {
+                            Logger.error('Node ' + node.id + ' children file ' + nodeXMBOFilePath + ' not found.');
+                        } else {
+
+
+                            const childtilesetName = FileUtils.getRandomName() + '.json';
+                            this._process3XmboFile(
+                                nodeXMBOFile,
+                                new TilesetGenerator(tilesetGenerator),
+                                depth + 1,
+                                xmboFile.getFileName() + '_' + nodeId + '_' + node.id,
+                                screenDiameter,
+                                childtilesetName,
+                                this._getResourse(xmboFile, node.resources[0])
+                            );
+
+                            childrenObject.content = {
+                                uri: childtilesetName
+                            }
+                        }
+
+                        tileset.root.children.push(childrenObject);
+                    }
+                }
+            }
         }
-        const tilePath = path.join(tileDir, tilesetName);
+
+        const tilePath = path.join(this._tilesetCatalog, tilesetName);
 
         this._saveTileset(tilePath, tileset);
+
     }
 
     _saveTileset(tilePath, tileset) {
         fs.writeFileSync(tilePath, JSON.stringify(tileset, null, 4));
     }
 
-    _save3D(tileDir, layer, ctmData) {
+    _save3D(tileDir, b3dmName, ctmData) {
 
-        if (ctmData.length > 1) {
-            return undefined;
+        if (ctmData === undefined) {
+            console.log('!!!!');
         }
 
-        const tilePath = FileUtils.getRandomName() + '.b3dm';
-        const data = this.processToB3DM(tileDir + tilePath, layer._threeXMBO.getThreeXMBResource(ctmData[0]));
-        return tilePath;
+        const b3dmPath = tileDir + b3dmName;//FileUtils.getRandomName() + '.b3dm';
+
+        if (!fs.existsSync(b3dmPath)) {
+            this.processToB3DM(b3dmName, b3dmPath, ctmData);
+        }
+
+        return b3dmName;
     }
 
-    processToB3DM(b3dmName, ctmData) {
+    processToB3DM(b3dmName, b3dmPath, ctmData) {
 
-        const converter = new CTM2GLBConverter(this._ctmCatalog, ctmData);
+        this._workerPool.runTask({
+            b3dmName: b3dmName,
+            b3dmPath: b3dmPath,
+            ctmCatalog: this._ctmCatalog,
+            ctmData: ctmData,
+        }, (err, result) => {
+            if (result !== undefined) {
+                fs.writeFileSync(b3dmPath, result.b3dm);
+                fs.writeFileSync(b3dmPath + '.glb', result.glb);
 
-        converter.convert(b3dmName).then(
-            b3dm => {
-                fs.writeFileSync(b3dmName, b3dm);
-            },
-            error => {
+                // this._dbStorage.insertB3DM(b3dmName, result).then(() => {
+                //
+                // });
+
+            } else {
+                Logger.error('Cant save : ' + b3dmName);
             }
-        );
+        });
+
     }
 
-    _calcGeometricError(depth) {
-        return 100 - (10 * depth);
+    _calcGeometricError(screenDiameter) {
+
+        if(screenDiameter === undefined){
+            return 100;
+        }
+
+        if(screenDiameter === 0){
+            return 100;
+        }
+
+        const geometricError = 2000 * (1 / Math.sqrt(screenDiameter));
+
+        return geometricError;
+        //return Math.round(500 - (depth * 500 / this._options.depth));
+    }
+
+    _getResourse(xmboFile, resource) {
+        if (resource !== undefined) {
+            const ctmdata = xmboFile.getThreeXMBResource(resource);
+            if (ctmdata !== undefined) {
+                if (ctmdata.texture !== undefined) {
+                    ctmdata.texture = xmboFile.getThreeXMBResource(ctmdata.texture);
+                }
+            }
+            return [ctmdata];
+        }
+        return undefined;
     }
 }
